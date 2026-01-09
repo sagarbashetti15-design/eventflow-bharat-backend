@@ -78,3 +78,9 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+app.post("/auth/register", (req, res) => {
+  const { email, password, role } = req.body;
+  users.push({ email, password, role: role || "USER" });
+  res.json({ message: "User registered" });
+});
+
