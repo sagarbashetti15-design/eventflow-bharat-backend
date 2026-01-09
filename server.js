@@ -1,64 +1,64 @@
 const express = require("express");
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = "eventflow_secret_key";
+const PORT = process.env.PORT || 3000;
 
-/* ===== In-memory database (REAL logic) ===== */
-const users = [
-  { email: "admin@eventflow.com", password: "admin123", role: "ADMIN" }
-];
+/* ================= STORAGE ================= */
 const events = [];
 
-/* ===== Middleware ===== */
-function auth(req, res, next) {
-  const token = req.headers.authorization;
-  if (!token) return res.status(401).json({ message: "No token" });
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ message: "Invalid token" });
-  }
-}
-
-function adminOnly(req, res, next) {
-  if (req.user.role !== "ADMIN") {
-    return res.status(403).json({ message: "Admin only" });
-  }
-  next();
-}
-
-/* ===== Auth APIs ===== */
-app.post("/auth/login", (req, res) => {
-  const { email, password } = req.body;
-  const user = users.find(
-    u => u.email === email && u.password === password
-  );
-  if (!user) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-  const token = jwt.sign(
-    { email: user.email, role: user.role },
-    JWT_SECRET,
-    { expiresIn: "2h" }
-  );
-
-  res.json({ token, role: user.role });
+/* ================= RAZORPAY ================= */
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_xxxxx",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "test_secret"
 });
 
-/* ===== Events APIs ===== */
+/* ================= HEALTH ================= */
+app.get("/", (req, res) => {
+  res.send("EventFlow Bharat Backend Running ✅");
+});
+
+/* ================= CREATE PAYMENT ORDER ================= */
+app.post("/payment/order", async (req, res) => {
+  const { amount } = req.body;
+
+  const order = await razorpay.orders.create({
+    amount: amount * 100,
+    currency: "INR",
+    receipt: "event_" + Date.now()
+  });
+
+  res.json(order);
+});
+
+/* ================= VERIFY PAYMENT ================= */
+app.post("/payment/verify", (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  const body = razorpay_order_id + "|" + razorpay_payment_id;
+  const expected = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "test_secret")
+    .update(body)
+    .digest("hex");
+
+  if (expected === razorpay_signature) {
+    res.json({ success: true });
+  } else {
+    res.status(400).json({ success: false });
+  }
+});
+
+/* ================= BOOK EVENT ================= */
 app.post("/events", (req, res) => {
   const { name, date, venue, email, package: pkg } = req.body;
 
   if (!name || !date || !venue || !email || !pkg) {
-    return res.status(400).json({ message: "All fields are required" });
+    return res.status(400).json({ message: "All fields required" });
   }
 
   const event = {
@@ -73,31 +73,41 @@ app.post("/events", (req, res) => {
 
   events.push(event);
 
-  res.json({
-    success: true,
-    message: "Event booked successfully",
-    event
-  });
+  res.json({ success: true, event });
 });
 
+/* ================= ADMIN ================= */
+app.get("/admin/events", (req, res) => {
+  res.json(events);
+});
 
-/* ===== Admin APIs ===== */
-app.get("/admin/dashboard", auth, adminOnly, (req, res) => {
+app.get("/admin/stats", (req, res) => {
+  const revenue = events.reduce((sum, e) => {
+    return sum + (e.package === "Basic" ? 9999 :
+                  e.package === "Premium" ? 24999 : 49999);
+  }, 0);
+
   res.json({
-    totalUsers: users.length,
     totalEvents: events.length,
-    plans: ["Free"],
-    revenue: 0
+    revenue
   });
 });
 
-/* ===== Health ===== */
-app.get("/", (req, res) => {
-  res.send("EventFlow Backend Running ✅");
+/* ================= AI ASSISTANT ================= */
+app.post("/ai/assist", (req, res) => {
+  const { question } = req.body;
+
+  const ai = {
+    wedding: "Premium or Luxury is best for weddings.",
+    birthday: "Basic or Premium works great for birthdays.",
+    corporate: "Luxury is ideal for corporate events."
+  };
+
+  res.json({
+    reply: ai[question] || "Tell me more about your event."
+  });
 });
 
 app.listen(PORT, () => {
   console.log("Backend running on port", PORT);
 });
-
-
