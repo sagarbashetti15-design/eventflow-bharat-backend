@@ -54,24 +54,19 @@ app.post("/auth/login", (req, res) => {
 });
 
 /* ===== Events APIs ===== */
-app.post("/events", auth, (req, res) => {
+app.post("/events", (req, res) => {
   const event = {
     id: events.length + 1,
     name: req.body.name,
     date: req.body.date,
     venue: req.body.venue,
-    createdBy: req.user.email
+    package: req.body.package,
+    customerEmail: req.body.email
   };
   events.push(event);
-  res.json({ message: "Event created", event });
+  res.json({ message: "Event booked successfully", event });
 });
 
-app.get("/events", auth, (req, res) => {
-  const userEvents = events.filter(
-    e => e.createdBy === req.user.email
-  );
-  res.json(userEvents);
-});
 
 /* ===== Admin APIs ===== */
 app.get("/admin/dashboard", auth, adminOnly, (req, res) => {
