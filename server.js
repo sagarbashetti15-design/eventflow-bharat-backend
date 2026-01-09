@@ -10,16 +10,16 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-/* ================= STORAGE ================= */
+/* ---------------- DATA STORE ---------------- */
 const events = [];
 
-/* ================= RAZORPAY ================= */
+/* ---------------- RAZORPAY ---------------- */
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-/* ================= EMAIL ================= */
+/* ---------------- EMAIL ---------------- */
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -28,17 +28,17 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/* ================= HEALTH ================= */
+/* ---------------- HEALTH ---------------- */
 app.get("/", (req, res) => {
   res.send("EventFlow Bharat Backend Running ✅");
 });
 
-/* ================= PAYMENT KEY ================= */
+/* ---------------- PAYMENT KEY ---------------- */
 app.get("/payment/key", (req, res) => {
   res.json({ key: process.env.RAZORPAY_KEY_ID });
 });
 
-/* ================= CREATE ORDER ================= */
+/* ---------------- CREATE ORDER ---------------- */
 app.post("/payment/order", async (req, res) => {
   const { amount } = req.body;
   const order = await razorpay.orders.create({
@@ -49,7 +49,7 @@ app.post("/payment/order", async (req, res) => {
   res.json(order);
 });
 
-/* ================= VERIFY PAYMENT ================= */
+/* ---------------- VERIFY PAYMENT ---------------- */
 app.post("/payment/verify", (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
   const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -66,7 +66,7 @@ app.post("/payment/verify", (req, res) => {
   }
 });
 
-/* ================= BOOK EVENT ================= */
+/* ---------------- BOOK EVENT ---------------- */
 app.post("/events", async (req, res) => {
   const event = {
     id: events.length + 1,
@@ -75,15 +75,15 @@ app.post("/events", async (req, res) => {
   };
   events.push(event);
 
-  /* EMAIL CONFIRMATION */
   await transporter.sendMail({
     from: `"EventFlow Bharat" <${process.env.EMAIL_USER}>`,
     to: event.email,
     subject: "Your Event Booking is Confirmed 🎉",
     html: `
-      <h2>Thank you for booking with EventFlow Bharat</h2>
+      <h2>Booking Confirmed</h2>
       <p><b>Event:</b> ${event.name}</p>
       <p><b>Date:</b> ${event.date}</p>
+      <p><b>Venue:</b> ${event.venue}</p>
       <p><b>Package:</b> ${event.package}</p>
       <p>Our team will contact you shortly.</p>
     `
@@ -92,13 +92,12 @@ app.post("/events", async (req, res) => {
   res.json({ success: true });
 });
 
-/* ================= ADMIN ================= */
+/* ---------------- ADMIN ---------------- */
 app.get("/admin/dashboard", (req, res) => {
   const revenue = events.reduce((s, e) =>
     s + (e.package === "Basic" ? 9999 : e.package === "Premium" ? 24999 : 49999),
     0
   );
-
   res.json({
     totalEvents: events.length,
     revenue,
@@ -106,14 +105,14 @@ app.get("/admin/dashboard", (req, res) => {
   });
 });
 
-/* ================= AI ================= */
+/* ---------------- AI ---------------- */
 app.post("/ai/assist", (req, res) => {
-  const map = {
-    wedding: "Luxury or Premium is best for stress-free weddings.",
-    birthday: "Basic or Premium works great for birthdays.",
-    corporate: "Luxury is ideal for corporate events."
+  const ai = {
+    wedding: "Luxury or Premium is ideal for weddings.",
+    birthday: "Basic or Premium is perfect for birthdays.",
+    corporate: "Luxury works best for corporate events."
   };
-  res.json({ reply: map[req.body.question] || "Tell me more about your event." });
+  res.json({ reply: ai[req.body.question] || "Tell me more about your event." });
 });
 
 app.listen(PORT, () => console.log("Backend running"));
