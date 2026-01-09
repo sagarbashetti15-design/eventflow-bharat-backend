@@ -1,0 +1,15 @@
+const jwt = require("jsonwebtoken");
+
+exports.auth = (role) => (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const data = jwt.verify(token, process.env.JWT_SECRET);
+    if (role && data.role !== role) return res.sendStatus(403);
+    req.user = data;
+    next();
+  } catch {
+    res.sendStatus(403);
+  }
+};
