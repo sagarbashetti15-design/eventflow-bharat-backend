@@ -9,23 +9,34 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-/* ================= STORAGE ================= */
+/* ================= IN-MEMORY STORAGE ================= */
 const events = [];
 
-/* ================= RAZORPAY ================= */
+/* ================= RAZORPAY SETUP ================= */
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_xxxxx",
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_XXXXXXXX",
   key_secret: process.env.RAZORPAY_KEY_SECRET || "test_secret"
 });
 
-/* ================= HEALTH ================= */
+/* ================= HEALTH CHECK ================= */
 app.get("/", (req, res) => {
   res.send("EventFlow Bharat Backend Running ✅");
 });
 
-/* ================= CREATE PAYMENT ORDER ================= */
+/* ================= SEND PUBLIC KEY ================= */
+app.get("/payment/key", (req, res) => {
+  res.json({
+    key: process.env.RAZORPAY_KEY_ID || "rzp_test_XXXXXXXX"
+  });
+});
+
+/* ================= CREATE ORDER ================= */
 app.post("/payment/order", async (req, res) => {
   const { amount } = req.body;
+
+  if (!amount) {
+    return res.status(400).json({ message: "Amount required" });
+  }
 
   const order = await razorpay.orders.create({
     amount: amount * 100,
@@ -53,7 +64,7 @@ app.post("/payment/verify", (req, res) => {
   }
 });
 
-/* ================= BOOK EVENT ================= */
+/* ================= SAVE EVENT ================= */
 app.post("/events", (req, res) => {
   const { name, date, venue, email, package: pkg } = req.body;
 
