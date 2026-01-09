@@ -55,16 +55,29 @@ app.post("/auth/login", (req, res) => {
 
 /* ===== Events APIs ===== */
 app.post("/events", (req, res) => {
+  const { name, date, venue, email, package: pkg } = req.body;
+
+  if (!name || !date || !venue || !email || !pkg) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
   const event = {
     id: events.length + 1,
-    name: req.body.name,
-    date: req.body.date,
-    venue: req.body.venue,
-    package: req.body.package,
-    customerEmail: req.body.email
+    name,
+    date,
+    venue,
+    email,
+    package: pkg,
+    createdAt: new Date()
   };
+
   events.push(event);
-  res.json({ message: "Event booked successfully", event });
+
+  res.json({
+    success: true,
+    message: "Event booked successfully",
+    event
+  });
 });
 
 
